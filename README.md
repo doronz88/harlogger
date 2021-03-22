@@ -18,6 +18,9 @@ After deploy, simply run on remote device:
 ```shell
 # trigger monitor HTTP/HTTPS traffic for the next 120 seconds
 harlogger 120
+
+# or just trigger for infinity
+harlogger --infinite
 ```
 
 Now you can just run locally:
