@@ -4,11 +4,15 @@ import subprocess
 import click
 import json
 
+HAR_TELEMETRY_UNIQUE_IDENTIFIER = 'startedDateTime'
+
 
 @click.command()
 @click.option('-o', '--out', type=click.File('w'))
-def main(out):
-    p = subprocess.Popen(['idevicesyslog', '--no-colors', '-q', '-m', 'startedDateTime'], stdout=subprocess.PIPE)
+@click.option('-n', '--namespace')
+def main(out, namespace):
+    p = subprocess.Popen(['idevicesyslog', '--no-colors', '-q', '-m', HAR_TELEMETRY_UNIQUE_IDENTIFIER],
+                         stdout=subprocess.PIPE)
 
     har = {
         'log': {
@@ -28,9 +32,11 @@ def main(out):
         while True:
             line = p.stdout.readline().strip().decode('utf8')
             splitted_lines = line.split('(CFNetwork)', 1)
-            date = splitted_lines[0][:splitted_lines[0].rfind(' ')].strip()
-            namespace = splitted_lines[0][splitted_lines[0].rfind(' '):].strip()
+            log_namespace = splitted_lines[0][splitted_lines[0].rfind(' '):].strip()
             entry = json.loads(splitted_lines[1].split('<Notice>: ', 1)[1].replace(r'\134', '\\'))
+
+            if (namespace is not None) and (namespace != log_namespace):
+                continue
 
             print(json.dumps(entry, indent=4))
             har['log']['entries'].append(entry)
