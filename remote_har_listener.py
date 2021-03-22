@@ -9,9 +9,13 @@ HAR_TELEMETRY_UNIQUE_IDENTIFIER = 'startedDateTime'
 
 @click.command()
 @click.option('-o', '--out', type=click.File('w'))
-@click.option('-n', '--namespace')
-def main(out, namespace):
-    p = subprocess.Popen(['idevicesyslog', '--no-colors', '-q', '-m', HAR_TELEMETRY_UNIQUE_IDENTIFIER],
+@click.option('-p', '--process')
+def main(out, process):
+    args = ['idevicesyslog', '--no-colors', '-q', '-m', HAR_TELEMETRY_UNIQUE_IDENTIFIER]
+    if process is not None:
+        args += ['-p', process]
+
+    p = subprocess.Popen(args,
                          stdout=subprocess.PIPE)
 
     har = {
@@ -32,15 +36,11 @@ def main(out, namespace):
         while True:
             line = p.stdout.readline().strip().decode('utf8')
             splitted_lines = line.split('(CFNetwork)', 1)
-            log_namespace = splitted_lines[0][splitted_lines[0].rfind(' '):].strip()
+            raw_entry = splitted_lines[1].split('<Notice>: ', 1)[1].replace(r'\134', '\\')
             try:
-                raw_entry = splitted_lines[1].split('<Notice>: ', 1)[1].replace(r'\134', '\\')
                 entry = json.loads(raw_entry)
             except json.decoder.JSONDecodeError:
                 print(f'failed to decode: {raw_entry}')
-                continue
-
-            if (namespace is not None) and (namespace != log_namespace):
                 continue
 
             print(json.dumps(entry, indent=4))
