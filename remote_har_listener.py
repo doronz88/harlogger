@@ -33,7 +33,12 @@ def main(out, namespace):
             line = p.stdout.readline().strip().decode('utf8')
             splitted_lines = line.split('(CFNetwork)', 1)
             log_namespace = splitted_lines[0][splitted_lines[0].rfind(' '):].strip()
-            entry = json.loads(splitted_lines[1].split('<Notice>: ', 1)[1].replace(r'\134', '\\'))
+            try:
+                raw_entry = splitted_lines[1].split('<Notice>: ', 1)[1].replace(r'\134', '\\')
+                entry = json.loads(raw_entry)
+            except json.decoder.JSONDecodeError:
+                print(f'failed to decode: {raw_entry}')
+                continue
 
             if (namespace is not None) and (namespace != log_namespace):
                 continue
