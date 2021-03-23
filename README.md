@@ -1,6 +1,6 @@
 # Description
 
-iOS devices contain a hidden feature for sniffing HTTP/HTTPS traffic from all processes using the CFNetwork framework
+iOS devices contain a hidden feature for sniffing decrypted HTTP/HTTPS traffic from all processes using the CFNetwork framework
 into an [HAR](https://en.wikipedia.org/wiki/HAR_(file_format)#:~:text=The%20specification%20for%20the%20HTTP,Wide%20Web%20Consortium%20(W3C).) format. 
 To trigger this feature on a jailbroken device, you can simply place the correct configuration
 for `com.apple.CFNetwork` and trigger the `com.apple.CFNetwork.har-capture-update` notification.
