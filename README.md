@@ -32,6 +32,6 @@ Now you can just run locally:
 
 The output should look like:
 
-![](./example.gif)
+![](./example3.gif)
 
 
