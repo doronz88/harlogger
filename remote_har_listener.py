@@ -133,12 +133,12 @@ def main(out, pids, images, headers, request, response, unique):
             entry['pid'] = pid
 
             if unique:
-                hash = (image, pid, entry['request']['method'], entry['request']['url'])
+                entry_hash = (image, pid, entry['request']['method'], entry['request']['url'])
 
-                if hash in shown_set:
+                if entry_hash in shown_set:
                     continue
 
-                shown_set.add(hash)
+                shown_set.add(entry_hash)
             show_har_entry(entry, filter_headers=headers, show_request=request, show_response=response)
 
             har['log']['entries'].append(entry)
