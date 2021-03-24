@@ -1,10 +1,42 @@
 #!/usr/local/bin/python3
 
 import subprocess
-import click
+import textwrap
 import json
 
+import click
+
 HAR_TELEMETRY_UNIQUE_IDENTIFIER = 'startedDateTime'
+
+INDENT = '    '
+
+
+def show_har_entry(entry):
+    request = entry['request']
+
+    print(f'➡️   {request["method"]} {request["url"]}')
+    for header in request['headers']:
+        print(textwrap.indent(f'{header["name"]}: {header["value"]}', INDENT))
+
+    print('')
+
+    response = entry['response']
+
+    print(f'{INDENT}⬅️   {response["status"]} {response["statusText"]}')
+    for header in response['headers']:
+        print(textwrap.indent(f'{header["name"]}: {header["value"]}', INDENT * 2))
+
+    print('')
+
+    if 'content' in response:
+        content = response['content']
+
+        if 'text' in content:
+            text = content['text']
+
+            print(textwrap.indent(text, INDENT * 2))
+
+    print('')
 
 
 @click.command()
@@ -43,7 +75,8 @@ def main(out, process):
                 print(f'failed to decode: {raw_entry}')
                 continue
 
-            print(json.dumps(entry, indent=4))
+            show_har_entry(entry)
+
             har['log']['entries'].append(entry)
     except KeyboardInterrupt:
         if out:
