@@ -7,45 +7,62 @@ import json
 from termcolor import colored
 import click
 
+# i hope this match is unique enough. apple didn't provide with a really nicer magic to grep on
 HAR_TELEMETRY_UNIQUE_IDENTIFIER = 'startedDateTime'
 
 INDENT = '    '
 
 
-def show_har_entry(entry, filter_headers=None):
-    request = entry['request']
+def get_header_from_list(name, headers):
+    for header in headers:
+        if header['name'].lower() == name.lower():
+            return header['value']
+    return None
+
+
+def is_in_insensitive_list(needle, haystack):
+    for h in haystack:
+        if needle.lower() == h.lower():
+            return True
+    return False
+
+
+def show_headers(headers, filter_headers, indent=''):
+    for header in headers:
+        if (filter_headers is not None) and (len(filter_headers) > 0) and \
+                not is_in_insensitive_list(header['name'], filter_headers):
+            continue
+        print(textwrap.indent(f'{header["name"]}: {header["value"]}', indent))
+    print('')
+
+
+def show_har_entry(entry, filter_headers=None, show_request=True, show_response=True):
     image = entry['image']
     pid = entry['pid']
 
     process = f'{image}({pid})'
 
-    print(f'➡️   {colored(process, "cyan")} {request["method"]} {request["url"]}')
-    for header in request['headers']:
-        if (filter_headers is not None) and (len(filter_headers) > 0) and (header['name'] not in filter_headers):
-            continue
-        print(textwrap.indent(f'{header["name"]}: {header["value"]}', INDENT))
+    if show_request:
+        request = entry['request']
 
-    print('')
+        print(f'➡️   {colored(process, "cyan")} {request["method"]} {request["url"]}')
+        show_headers(request['headers'], filter_headers, INDENT)
 
-    response = entry['response']
+    if show_response:
+        response = entry['response']
 
-    print(f'{INDENT}⬅️   {response["status"]} {response["statusText"]}')
-    for header in response['headers']:
-        if (filter_headers is not None) and (len(filter_headers) > 0) and (header['name'] not in filter_headers):
-            continue
-        print(textwrap.indent(f'{header["name"]}: {header["value"]}', INDENT * 2))
+        print(f'{INDENT}⬅️   {response["status"]} {response["statusText"]}')
+        show_headers(response['headers'], filter_headers, INDENT * 2)
 
-    print('')
+        if 'content' in response:
+            content = response['content']
 
-    if 'content' in response:
-        content = response['content']
+            if 'text' in content:
+                text = content['text']
 
-        if 'text' in content:
-            text = content['text']
+                print(textwrap.indent(text, INDENT * 2))
 
-            print(textwrap.indent(text, INDENT * 2))
-
-    print('')
+        print('')
 
 
 @click.command()
@@ -53,7 +70,11 @@ def show_har_entry(entry, filter_headers=None):
 @click.option('pids', '-p', '--pid', multiple=True, help='filter pid list')
 @click.option('images', '-i', '--image', multiple=True, help='filter image list')
 @click.option('headers', '-h', '--header', multiple=True, help='filter header list')
-def main(out, pids, images, headers):
+@click.option('--request/--no-request', is_flag=True, default=True, help='show requests')
+@click.option('--response/--no-response', is_flag=True, default=True, help='show responses')
+@click.option('-u', '--unique', is_flag=True, help='show only unique requests per image/pid/method/uri combination')
+def main(out, pids, images, headers, request, response, unique):
+    shown_set = set()
     args = ['idevicesyslog', '--no-colors', '-q', '-m', HAR_TELEMETRY_UNIQUE_IDENTIFIER]
 
     p = subprocess.Popen(args,
@@ -97,7 +118,14 @@ def main(out, pids, images, headers):
             entry['image'] = image
             entry['pid'] = pid
 
-            show_har_entry(entry, filter_headers=headers)
+            if unique:
+                hash = (image, pid, entry['request']['method'], entry['request']['url'])
+
+                if hash in shown_set:
+                    continue
+
+                shown_set.add(hash)
+            show_har_entry(entry, filter_headers=headers, show_request=request, show_response=response)
 
             har['log']['entries'].append(entry)
     except KeyboardInterrupt:
