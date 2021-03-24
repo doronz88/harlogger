@@ -4,6 +4,7 @@ import subprocess
 import textwrap
 import json
 
+from termcolor import colored
 import click
 
 HAR_TELEMETRY_UNIQUE_IDENTIFIER = 'startedDateTime'
@@ -13,8 +14,12 @@ INDENT = '    '
 
 def show_har_entry(entry):
     request = entry['request']
+    namespace = entry['namespace']
+    pid = entry['pid']
 
-    print(f'➡️   {request["method"]} {request["url"]}')
+    process = f'{namespace}({pid})'
+
+    print(f'➡️   {colored(process, "cyan")} {request["method"]} {request["url"]}')
     for header in request['headers']:
         print(textwrap.indent(f'{header["name"]}: {header["value"]}', INDENT))
 
@@ -68,12 +73,18 @@ def main(out, process):
         while True:
             line = p.stdout.readline().strip().decode('utf8')
             splitted_lines = line.split('(CFNetwork)', 1)
+            namespace = splitted_lines[0].rsplit(' ', 1)[1]
+            pid = splitted_lines[1].split('[', 1)[1].split(']', 1)[0]
             raw_entry = splitted_lines[1].split('<Notice>: ', 1)[1].replace(r'\134', '\\')
             try:
                 entry = json.loads(raw_entry)
             except json.decoder.JSONDecodeError:
                 print(f'failed to decode: {raw_entry}')
                 continue
+
+            # artificial HAR information extracted from syslog line
+            entry['namespace'] = namespace
+            entry['pid'] = pid
 
             show_har_entry(entry)
 
