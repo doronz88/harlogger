@@ -32,6 +32,7 @@ def show_headers(headers, filter_headers, indent=''):
         if (filter_headers is not None) and (len(filter_headers) > 0) and \
                 not is_in_insensitive_list(header['name'], filter_headers):
             continue
+            # if
         print(textwrap.indent(f'{header["name"]}: {header["value"]}', indent))
     print('')
 
@@ -47,6 +48,15 @@ def show_har_entry(entry, filter_headers=None, show_request=True, show_response=
 
         print(f'➡️   {colored(process, "cyan")} {request["method"]} {request["url"]}')
         show_headers(request['headers'], filter_headers, INDENT)
+
+        if 'postData' in request:
+            post_data = request['postData']
+
+            if 'text' in post_data:
+                text = post_data['text']
+
+                print(textwrap.indent(text, INDENT))
+                print('')
 
     if show_response:
         response = entry['response']
