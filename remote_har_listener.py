@@ -66,7 +66,7 @@ def show_har_entry(entry, filter_headers=None, show_request=True, show_response=
 
 
 @click.command()
-@click.option('-o', '--out', type=click.File('w'))
+@click.option('-o', '--out', type=click.File('w'), help='file to store the har entries into upon exit (ctrl+c)')
 @click.option('pids', '-p', '--pid', multiple=True, help='filter pid list')
 @click.option('images', '-i', '--image', multiple=True, help='filter image list')
 @click.option('headers', '-h', '--header', multiple=True, help='filter header list')
@@ -74,6 +74,10 @@ def show_har_entry(entry, filter_headers=None, show_request=True, show_response=
 @click.option('--response/--no-response', is_flag=True, default=True, help='show responses')
 @click.option('-u', '--unique', is_flag=True, help='show only unique requests per image/pid/method/uri combination')
 def main(out, pids, images, headers, request, response, unique):
+    """
+    Simple utility to filter out the HAR log messages from device's syslog, assuming HAR logging is enabled.
+    If not, please use the `harlogger` binary beforehand.
+    """
     shown_set = set()
     args = ['idevicesyslog', '--no-colors', '-q', '-m', HAR_TELEMETRY_UNIQUE_IDENTIFIER]
 

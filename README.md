@@ -14,7 +14,7 @@ This project is just a simple utility for using this feature.
 
 If you would like to build yourself using [Theos](https://github.com/theos/theos/wiki), simply use `make package`.
 
-I've already supplied with all the necessary binaries so you don't have to. You can just install the `.deb` file found
+I've already supplied with all the necessary binaries, so you don't have to. You can just install the `.deb` file found
 in the `packages` subdirectory, or use the compiled `bin/harlogger`.
 
 After deploy, simply run on the remote device:

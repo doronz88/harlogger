@@ -2,8 +2,8 @@ Package: com.cyber.har-logger
 Name: har-logger
 Version: 0.0.1
 Architecture: iphoneos-arm
-Description: An awesome tool of some sort!!
-Maintainer: Z
-Author: Z
+Description: Triggers HAR (HTTP/HTTPS) logging on remote device
+Maintainer: DoronZ
+Author: DoronZ
 Section: System
 Tag: role::hacker
