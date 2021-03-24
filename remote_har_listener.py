@@ -12,7 +12,7 @@ HAR_TELEMETRY_UNIQUE_IDENTIFIER = 'startedDateTime'
 INDENT = '    '
 
 
-def show_har_entry(entry):
+def show_har_entry(entry, filter_headers=None):
     request = entry['request']
     image = entry['image']
     pid = entry['pid']
@@ -21,6 +21,8 @@ def show_har_entry(entry):
 
     print(f'➡️   {colored(process, "cyan")} {request["method"]} {request["url"]}')
     for header in request['headers']:
+        if (filter_headers is not None) and (len(filter_headers) > 0) and (header['name'] not in filter_headers):
+            continue
         print(textwrap.indent(f'{header["name"]}: {header["value"]}', INDENT))
 
     print('')
@@ -29,6 +31,8 @@ def show_har_entry(entry):
 
     print(f'{INDENT}⬅️   {response["status"]} {response["statusText"]}')
     for header in response['headers']:
+        if (filter_headers is not None) and (len(filter_headers) > 0) and (header['name'] not in filter_headers):
+            continue
         print(textwrap.indent(f'{header["name"]}: {header["value"]}', INDENT * 2))
 
     print('')
@@ -46,9 +50,10 @@ def show_har_entry(entry):
 
 @click.command()
 @click.option('-o', '--out', type=click.File('w'))
-@click.option('pids', '-p', '--pid', multiple=True)
-@click.option('images', '-i', '--image', multiple=True)
-def main(out, pids, images):
+@click.option('pids', '-p', '--pid', multiple=True, help='filter pid list')
+@click.option('images', '-i', '--image', multiple=True, help='filter image list')
+@click.option('headers', '-h', '--header', multiple=True, help='filter header list')
+def main(out, pids, images, headers):
     args = ['idevicesyslog', '--no-colors', '-q', '-m', HAR_TELEMETRY_UNIQUE_IDENTIFIER]
 
     p = subprocess.Popen(args,
@@ -92,7 +97,7 @@ def main(out, pids, images):
             entry['image'] = image
             entry['pid'] = pid
 
-            show_har_entry(entry)
+            show_har_entry(entry, filter_headers=headers)
 
             har['log']['entries'].append(entry)
     except KeyboardInterrupt:
