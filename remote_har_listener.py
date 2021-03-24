@@ -14,10 +14,10 @@ INDENT = '    '
 
 def show_har_entry(entry):
     request = entry['request']
-    namespace = entry['namespace']
+    image = entry['image']
     pid = entry['pid']
 
-    process = f'{namespace}({pid})'
+    process = f'{image}({pid})'
 
     print(f'➡️   {colored(process, "cyan")} {request["method"]} {request["url"]}')
     for header in request['headers']:
@@ -46,11 +46,10 @@ def show_har_entry(entry):
 
 @click.command()
 @click.option('-o', '--out', type=click.File('w'))
-@click.option('-p', '--process')
-def main(out, process):
+@click.option('pids', '-p', '--pid', multiple=True)
+@click.option('images', '-i', '--image', multiple=True)
+def main(out, pids, images):
     args = ['idevicesyslog', '--no-colors', '-q', '-m', HAR_TELEMETRY_UNIQUE_IDENTIFIER]
-    if process is not None:
-        args += ['-p', process]
 
     p = subprocess.Popen(args,
                          stdout=subprocess.PIPE)
@@ -73,9 +72,16 @@ def main(out, process):
         while True:
             line = p.stdout.readline().strip().decode('utf8')
             splitted_lines = line.split('(CFNetwork)', 1)
-            namespace = splitted_lines[0].rsplit(' ', 1)[1]
+            image = splitted_lines[0].rsplit(' ', 1)[1]
             pid = splitted_lines[1].split('[', 1)[1].split(']', 1)[0]
             raw_entry = splitted_lines[1].split('<Notice>: ', 1)[1].replace(r'\134', '\\')
+
+            if (len(pids) > 0) and (pid not in pids):
+                continue
+
+            if (len(images) > 0) and (image not in images):
+                continue
+
             try:
                 entry = json.loads(raw_entry)
             except json.decoder.JSONDecodeError:
@@ -83,7 +89,7 @@ def main(out, process):
                 continue
 
             # artificial HAR information extracted from syslog line
-            entry['namespace'] = namespace
+            entry['image'] = image
             entry['pid'] = pid
 
             show_har_entry(entry)
