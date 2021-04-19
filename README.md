@@ -38,6 +38,6 @@ When hitting the `Ctrl+C`, the script should exit and dump all captured entries 
 
 The output should look like:
 
-![](./example4.gif)
+![](./example5.gif)
 
 
