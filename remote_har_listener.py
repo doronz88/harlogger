@@ -1,16 +1,14 @@
 #!/usr/local/bin/python3
-
-import subprocess
-import textwrap
 import json
+import os
+from urllib.parse import urlparse
 
-from termcolor import colored
 import click
-
-# i hope this match is unique enough. apple didn't provide with a really nicer magic to grep on
-HAR_TELEMETRY_UNIQUE_IDENTIFIER = 'startedDateTime'
-
-INDENT = '    '
+from pygments import highlight
+from pygments.formatters import TerminalTrueColorFormatter
+from pygments.lexers import HttpLexer
+from pymobiledevice3.lockdown import LockdownClient
+from pymobiledevice3.services.os_trace import OsTraceService
 
 
 def get_header_from_list(name, headers):
@@ -27,14 +25,47 @@ def is_in_insensitive_list(needle, haystack):
     return False
 
 
-def show_headers(headers, filter_headers, indent=''):
-    for header in headers:
+def show_http_packet(http_packet, filter_headers):
+    buf = ''
+    version = 'HTTP/1.0'
+    if http_packet['httpVersion'] == 'h2':
+        version = 'HTTP/2.0'
+
+    if 'url' in http_packet:
+        # request
+        url = urlparse(http_packet['url'])
+        uri = url.path
+        if url.query:
+            uri += f'?{url.query}'
+
+        buf += f'{http_packet["method"]} {uri} {version}\r\n'
+    else:
+        # response
+        if http_packet['status'] == 0:
+            # isn't a real packet
+            return
+        buf += f'{version} {http_packet["status"]} {http_packet["statusText"]}\r\n'
+
+    for header in http_packet['headers']:
         if (filter_headers is not None) and (len(filter_headers) > 0) and \
                 not is_in_insensitive_list(header['name'], filter_headers):
             continue
-            # if
-        print(textwrap.indent(f'{header["name"]}: {header["value"]}', indent))
-    print('')
+        buf += f'{header["name"]}: {header["value"]}\r\n'
+
+    buf += '\r\n'
+
+    content = {}
+
+    if 'postData' in http_packet:
+        content = http_packet['postData']
+
+    if 'content' in http_packet:
+        content = http_packet['content']
+
+    print(highlight(buf, HttpLexer(), TerminalTrueColorFormatter(style='autumn')))
+
+    if 'text' in content:
+        print(content['text'])
 
 
 def show_har_entry(entry, filter_headers=None, show_request=True, show_response=True):
@@ -46,33 +77,13 @@ def show_har_entry(entry, filter_headers=None, show_request=True, show_response=
     if show_request:
         request = entry['request']
 
-        print(f'➡️   {colored(process, "cyan")} {request["method"]} {request["url"]}')
-        show_headers(request['headers'], filter_headers, INDENT)
-
-        if 'postData' in request:
-            post_data = request['postData']
-
-            if 'text' in post_data:
-                text = post_data['text']
-
-                print(textwrap.indent(text, INDENT))
-                print('')
+        print(f'➡️   {process} {request["method"]} {request["url"]}')
+        show_http_packet(request, filter_headers)
 
     if show_response:
         response = entry['response']
-
-        print(f'{INDENT}⬅️   {response["status"]} {response["statusText"]}')
-        show_headers(response['headers'], filter_headers, INDENT * 2)
-
-        if 'content' in response:
-            content = response['content']
-
-            if 'text' in content:
-                text = content['text']
-
-                print(textwrap.indent(text, INDENT * 2))
-
-        print('')
+        print(f'⬅️   {process} {response["status"]} {response["statusText"]}')
+        show_http_packet(response, filter_headers)
 
 
 @click.command()
@@ -89,11 +100,6 @@ def main(out, pids, images, headers, request, response, unique):
     If not, please use the `harlogger` binary beforehand.
     """
     shown_set = set()
-    args = ['idevicesyslog', '--no-colors', '-q', '-m', HAR_TELEMETRY_UNIQUE_IDENTIFIER]
-
-    p = subprocess.Popen(args,
-                         stdout=subprocess.PIPE)
-
     har = {
         'log': {
             'version': '0.1',
@@ -105,16 +111,18 @@ def main(out, pids, images, headers, request, response, unique):
         }
     }
 
-    line = p.stdout.readline().strip()
-    assert line == b'[connected]'
+    lockdown = LockdownClient()
+    os_trace_service = OsTraceService(lockdown)
 
     try:
-        while True:
-            line = p.stdout.readline().strip().decode('utf8')
-            splitted_lines = line.split('(CFNetwork)', 1)
-            image = splitted_lines[0].rsplit(' ', 1)[1]
-            pid = splitted_lines[1].split('[', 1)[1].split(']', 1)[0]
-            raw_entry = splitted_lines[1].split('<Notice>: ', 1)[1].replace(r'\134', '\\')
+        for line in os_trace_service.syslog():
+            if line.label is None:
+                continue
+            if line.label.identifier != 'HAR':
+                continue
+            image = os.path.basename(line.image_name)
+            pid = line.pid
+            message = line.message
 
             if (len(pids) > 0) and (pid not in pids):
                 continue
@@ -123,9 +131,9 @@ def main(out, pids, images, headers, request, response, unique):
                 continue
 
             try:
-                entry = json.loads(raw_entry)
+                entry = json.loads(message)
             except json.decoder.JSONDecodeError:
-                print(f'failed to decode: {raw_entry}')
+                print(f'failed to decode: {message}')
                 continue
 
             # artificial HAR information extracted from syslog line

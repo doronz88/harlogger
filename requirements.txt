@@ -1,2 +1,4 @@
 termcolor
 click
+pymobiledevice3
+pygments

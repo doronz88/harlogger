@@ -23,7 +23,8 @@ After deploy, simply run on the remote device:
 # trigger monitor HTTP/HTTPS traffic for the next 120 seconds
 harlogger 120
 
-# or just trigger for infinity
+# or just trigger for infinity. once this is done, it should be enabled even
+# for software upgrades
 harlogger --infinite
 ```
 
