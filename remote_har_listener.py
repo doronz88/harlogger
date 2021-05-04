@@ -115,14 +115,8 @@ def main(out, pids, images, headers, request, response, unique):
     lockdown = LockdownClient()
     os_trace_service = OsTraceService(lockdown)
 
-    # just start the syslog service so we don't filter out a specific pid
-    syslog_service = SyslogService(lockdown=lockdown).watch()
-    next(syslog_service)
-
     try:
         for line in os_trace_service.syslog():
-            next(syslog_service)
-
             if line.label is None:
                 continue
             if line.label.identifier != 'HAR':
