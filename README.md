@@ -1,7 +1,7 @@
 # Description
 
-iOS devices contain a hidden feature for sniffing decrypted HTTP/HTTPS traffic from all processes using the CFNetwork
-framework into an [HAR](https://en.wikipedia.org/wiki/HAR_(file_format).)
+iOS 14.x devices contain a hidden feature for sniffing decrypted HTTP/HTTPS traffic from all processes using the
+CFNetwork framework into an [HAR](https://en.wikipedia.org/wiki/HAR_(file_format).)
 format. To trigger this feature on a jailbroken device, you can simply place the correct configuration
 for `com.apple.CFNetwork` and trigger the `com.apple.CFNetwork.har-capture-update` notification.
 
@@ -9,6 +9,8 @@ Since this capture triggers syslog lines, which can be associated with their pro
 connect each request-response to their corresponding process and the image name which triggered it.
 
 This project is just a simple utility for using this feature.
+
+**iOS 13.x or under don't have this feature.**
 
 # How to use
 
