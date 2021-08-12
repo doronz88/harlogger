@@ -119,7 +119,7 @@ def main(out, pids, images, headers, request, response, unique):
         for line in os_trace_service.syslog():
             if line.label is None:
                 continue
-            if line.label.identifier != 'HAR':
+            if line.label.category != 'HAR':
                 continue
 
             image = os.path.basename(line.image_name)
