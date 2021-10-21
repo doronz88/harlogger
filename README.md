@@ -3,6 +3,12 @@
 Simple pure python utility for sniffing HTTP/HTTPS decrypted traffic recorded by one of Apple's no-so-well documented
 APIs.
 
+# Installation
+
+```shell
+python3 -m pip install --user -U harlogger
+```
+
 # Profile method for non-jailbroken devices
 
 This method applies to Apple's CFNetwork profile. This profile is meant for debugging processes using the CFNetwork
@@ -21,10 +27,6 @@ framework. **This method doesn't include the request/response body.**
     
     # install the profile
     pymobiledevice3 profile install CFNetworkDiagnostics.mobileconfig
-    ```
-- Install `harlogger`
-     ```shell
-    python3 -m pip install --user -U harlogger
     ```
 
 - That's it! :) You can now just start sniffing out everything using:
