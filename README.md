@@ -66,8 +66,6 @@ for `com.apple.CFNetwork` and trigger the `com.apple.CFNetwork.har-capture-updat
 
 ## Howto
 
-If you would like to build yourself using [Theos](https://github.com/theos/theos/wiki), simply use `make package`.
-
 - Put [com.apple.CFNetowrk.plist](./com.apple.CFNetwork.plist) inside `/var/mobile/Library/Preferences/`
 - Restart the device
 - That's it! :) You can now just start sniffing out everything using:
