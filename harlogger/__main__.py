@@ -1,15 +1,14 @@
-#!/usr/local/bin/python3
 import json
 import os
+import posixpath
 from urllib.parse import urlparse
 
 import click
 from pygments import highlight
-from pygments.formatters import TerminalTrueColorFormatter
-from pygments.lexers import HttpLexer
+from pygments.formatters.terminal256 import TerminalTrueColorFormatter
+from pygments.lexers.textfmts import HttpLexer
 from pymobiledevice3.lockdown import LockdownClient
 from pymobiledevice3.services.os_trace import OsTraceService
-from pymobiledevice3.services.syslog import SyslogService
 
 
 def get_header_from_list(name, headers):
@@ -87,7 +86,87 @@ def show_har_entry(entry, filter_headers=None, show_request=True, show_response=
         show_http_packet(response, filter_headers)
 
 
-@click.command()
+def parse_fields(message: str):
+    result = {}
+
+    for line in message.split('\n'):
+        if ': ' not in line:
+            continue
+
+        line = line.strip()
+        k, v = line.split(':', 1)
+        k = k.strip()
+        v = v.strip()
+        result[k] = v
+
+    return result
+
+
+@click.group()
+def cli():
+    pass
+
+
+@cli.command('profile')
+@click.option('pids', '-p', '--pid', multiple=True, help='filter pid list')
+@click.option('process_names', '-pn', '--process-name', multiple=True, help='filter process name list')
+@click.option('--color/--no-color', default=True)
+@click.option('--request/--no-request', is_flag=True, default=True, help='show requests')
+@click.option('--response/--no-response', is_flag=True, default=True, help='show responses')
+def cli_profile(pids, process_names, color, request, response):
+    """
+    Sniff using CFNetowrkDiagnostics.mobileconfig profile.
+
+    This requires the specific Apple profile to be installed for the sniff to work.
+    """
+    lockdown = LockdownClient()
+
+    for entry in OsTraceService(lockdown).syslog():
+        if entry.label is None or entry.label.subsystem != 'com.apple.CFNetwork' or \
+                entry.label.category != 'Diagnostics':
+            continue
+
+        if pids and (entry.pid not in pids):
+            continue
+
+        if process_names and (posixpath.basename(entry.filename) not in process_names):
+            continue
+
+        lines = entry.message.split('\n')
+        if len(lines) < 2:
+            continue
+
+        buf = ''
+
+        if lines[1].strip().startswith('Protocol Enqueue: request') and request:
+            # request
+            print('➡️   ', end='')
+            fields = parse_fields(entry.message)
+            buf += f'{fields["Message"]}\n'
+            for name, value in fields.items():
+                if name in ('Protocol Enqueue', 'Request', 'Message'):
+                    continue
+                buf += f'{name}: {value}\n'
+
+        elif lines[1].strip().startswith('Protocol Received: request') and response:
+            # response
+            print('⬅️   ', end='')
+            fields = parse_fields(entry.message)
+            buf += f'{fields["Response"]} ({fields["Protocol Received"]})\n'
+            for name, value in fields.items():
+                if name in ('Protocol Received', 'Response'):
+                    continue
+                buf += f'{name}: {value}\n'
+
+        if buf:
+            if color:
+                print(highlight(buf, HttpLexer(), TerminalTrueColorFormatter(style='autumn')))
+            else:
+                print(buf)
+
+
+@cli.command('preference')
+@click.option('--udid')
 @click.option('-o', '--out', type=click.File('w'), help='file to store the har entries into upon exit (ctrl+c)')
 @click.option('pids', '-p', '--pid', multiple=True, help='filter pid list')
 @click.option('images', '-i', '--image', multiple=True, help='filter image list')
@@ -95,10 +174,12 @@ def show_har_entry(entry, filter_headers=None, show_request=True, show_response=
 @click.option('--request/--no-request', is_flag=True, default=True, help='show requests')
 @click.option('--response/--no-response', is_flag=True, default=True, help='show responses')
 @click.option('-u', '--unique', is_flag=True, help='show only unique requests per image/pid/method/uri combination')
-def main(out, pids, images, headers, request, response, unique):
+def cli_preference(udid, out, pids, images, headers, request, response, unique):
     """
-    Simple utility to filter out the HAR log messages from device's syslog, assuming HAR logging is enabled.
-    If not, please use the `harlogger` binary beforehand.
+    Sniff using the secret com.apple.CFNetwork.plist configuration.
+
+    This sniff includes the request/response body as well but requires the device to be jailbroken for
+    the sniff to work
     """
     shown_set = set()
     har = {
@@ -112,7 +193,7 @@ def main(out, pids, images, headers, request, response, unique):
         }
     }
 
-    lockdown = LockdownClient()
+    lockdown = LockdownClient(udid=udid)
     os_trace_service = OsTraceService(lockdown)
 
     try:
@@ -158,4 +239,4 @@ def main(out, pids, images, headers, request, response, unique):
 
 
 if __name__ == '__main__':
-    main()
+    cli()

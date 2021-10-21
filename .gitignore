@@ -1,3 +1,15 @@
-.theos
+src/.theos
+*.pyc
+.idea/
+venv/
+build/
+dist/
+*.egg-info/
+version.txt
+debug/
+*.DS_Store
+tickets
 .idea
+
+
 

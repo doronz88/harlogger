@@ -1,4 +1,3 @@
-termcolor
 click
 pymobiledevice3>=1.9.10
 pygments
