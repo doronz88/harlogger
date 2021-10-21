@@ -1,6 +1,6 @@
 # Description
 
-Simple pure python utility for sniffing HTTP/HTTPS decrypted traffic recorded by one of Apple's no-so-well documented
+Simple pure python utility for sniffing HTTP/HTTPS decrypted traffic recorded by one of Apple's not-so-well documented
 APIs.
 
 # Installation
