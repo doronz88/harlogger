@@ -69,10 +69,10 @@ def show_http_packet(http_packet, filter_headers):
 
 
 def show_har_entry(entry, filter_headers=None, show_request=True, show_response=True):
-    image = entry['image']
+    filename = posixpath.basename(entry['filename'])
     pid = entry['pid']
 
-    process = f'{image}({pid})'
+    process = f'{filename}({pid})'
 
     if show_request:
         request = entry['request']
@@ -169,12 +169,13 @@ def cli_profile(pids, process_names, color, request, response):
 @click.option('--udid')
 @click.option('-o', '--out', type=click.File('w'), help='file to store the har entries into upon exit (ctrl+c)')
 @click.option('pids', '-p', '--pid', multiple=True, help='filter pid list')
+@click.option('process_names', '-pn', '--process-name', multiple=True, help='filter process name list')
 @click.option('images', '-i', '--image', multiple=True, help='filter image list')
 @click.option('headers', '-h', '--header', multiple=True, help='filter header list')
 @click.option('--request/--no-request', is_flag=True, default=True, help='show requests')
 @click.option('--response/--no-response', is_flag=True, default=True, help='show responses')
 @click.option('-u', '--unique', is_flag=True, help='show only unique requests per image/pid/method/uri combination')
-def cli_preference(udid, out, pids, images, headers, request, response, unique):
+def cli_preference(udid, out, pids, process_names, images, headers, request, response, unique):
     """
     Sniff using the secret com.apple.CFNetwork.plist configuration.
 
@@ -213,6 +214,9 @@ def cli_preference(udid, out, pids, images, headers, request, response, unique):
             if (len(images) > 0) and (image not in images):
                 continue
 
+            if process_names and (posixpath.basename(line.filename) not in process_names):
+                continue
+
             try:
                 entry = json.loads(message)
             except json.decoder.JSONDecodeError:
@@ -222,6 +226,7 @@ def cli_preference(udid, out, pids, images, headers, request, response, unique):
             # artificial HAR information extracted from syslog line
             entry['image'] = image
             entry['pid'] = pid
+            entry['filename'] = line.filename
 
             if unique:
                 entry_hash = (image, pid, entry['request']['method'], entry['request']['url'])
