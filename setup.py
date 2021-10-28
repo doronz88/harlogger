@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 import os
 
 BASE_DIR = os.path.realpath(os.path.dirname(__file__))
-VERSION = '2.0.0'
+VERSION = '2.1.0'
 PACKAGE_NAME = 'harlogger'
 PACKAGES = [p for p in find_packages() if not p.startswith('tests')]
 
