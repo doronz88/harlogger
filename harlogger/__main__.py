@@ -194,7 +194,7 @@ def cli_preference(udid, out, pids, process_names, images, headers, request, res
         }
     }
 
-    lockdown = LockdownClient(udid=udid)
+    lockdown = LockdownClient(serial=udid)
     os_trace_service = OsTraceService(lockdown)
 
     try:
