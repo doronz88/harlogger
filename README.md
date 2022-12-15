@@ -19,7 +19,7 @@ framework. **This method doesn't include the request/response body.**
 - Download Apple's CFNetwork profile which can be found here:
   https://developer.apple.com/services-account/download?path=/iOS/iOS_Logs/CFNetworkDiagnostics.mobileconfig
 
-- Install it via any way you prefer. I'm using `pymobiledevice3`:
+- Install it via any way you prefer. I'm using [`pymobiledevice3`](https://github.com/doronz88/pymobiledevice3):
 
     ```shell
     # if you don't already have it
@@ -108,11 +108,24 @@ Connection: keep-alive
 <ClientInstRequest><Events><E><T>Event.ClientInst</T><IG>EB94C422BC394F90A876D39A790BECBC</IG><TS>1634801882467</TS><D><![CDATA[[{"T":"CI.BoxModel","FID":"CI","Name":"v2.8","SV":"4","P":{"C":1,"N":5,"I":"5iv","S":"V","M":"V+L+M+MT+E+N+C+K+BD","T":1669960,"F":0},"V":"zrpx/////////visible/+zryw/////////hidden/@p"}]]]></D></E></Events><STS>1634801882467</STS></ClientInstRequest>
 ```
 
-## iOS 15
+# Enable HTTP instrumentation method
 
-iOS 15.x will require the target process to have any of the following:
+Starting at iOS 15.0, the device will require the target process to have any of the following requirements:
 
 - `com.apple.private.cfnetwork.har-capture-delegation` entitlement
 - `get-task-allow` entitlement
 - `com.apple.security.get-task-allow` entitlement
 - OS build to be in `debug` mode
+
+In order to make the device enable HAR logging you may
+use [`pymobiledevice3`](https://github.com/doronz88/pymobiledevice3) as follows:
+
+```shell
+python3 -m pymobiledevice3 developer dvt har
+```
+
+Now you can start sniffing using the preference method:
+
+ ```shell
+python3 -m harlogger preference
+```
