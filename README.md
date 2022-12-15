@@ -107,3 +107,12 @@ Connection: keep-alive
 
 <ClientInstRequest><Events><E><T>Event.ClientInst</T><IG>EB94C422BC394F90A876D39A790BECBC</IG><TS>1634801882467</TS><D><![CDATA[[{"T":"CI.BoxModel","FID":"CI","Name":"v2.8","SV":"4","P":{"C":1,"N":5,"I":"5iv","S":"V","M":"V+L+M+MT+E+N+C+K+BD","T":1669960,"F":0},"V":"zrpx/////////visible/+zryw/////////hidden/@p"}]]]></D></E></Events><STS>1634801882467</STS></ClientInstRequest>
 ```
+
+## iOS 15
+
+iOS 15.x will require the target process to have any of the following:
+
+- `com.apple.private.cfnetwork.har-capture-delegation` entitlement
+- `get-task-allow` entitlement
+- `com.apple.security.get-task-allow` entitlement
+- OS build to be in `debug` mode
