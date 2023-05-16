@@ -196,6 +196,7 @@ def cli_preference(udid, out, pids, process_names, images, headers, request, res
 
     lockdown = LockdownClient(serial=udid)
     os_trace_service = OsTraceService(lockdown)
+    incomplete = ''
 
     try:
         for line in os_trace_service.syslog():
@@ -218,10 +219,16 @@ def cli_preference(udid, out, pids, process_names, images, headers, request, res
                 continue
 
             try:
-                entry = json.loads(message)
+                entry = json.loads(incomplete + message)
+                incomplete = ''
             except json.decoder.JSONDecodeError:
-                print(f'failed to decode: {message}')
-                continue
+                if message.startswith('<incomplete>'):
+                    incomplete += message.split('<incomplete>', 1)[1]
+                    continue
+                elif len(incomplete) > 0:
+                    incomplete += message
+                    continue
+                raise
 
             # artificial HAR information extracted from syslog line
             entry['image'] = image
