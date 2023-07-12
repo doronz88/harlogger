@@ -1,0 +1,184 @@
+import json
+import os
+import posixpath
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import IO, Tuple
+
+from haralyzer import HarEntry
+from pygments import highlight
+from pygments.formatters.terminal256 import TerminalTrueColorFormatter
+from pygments.lexers.textfmts import HttpLexer
+from pymobiledevice3.lockdown import LockdownClient
+from pymobiledevice3.services.os_trace import OsTraceService
+
+from harlogger.exceptions import HTTPParseError
+from harlogger.haralyzer_patches import add_text_base64_support_for_haralyzer
+from harlogger.http_transaction import HTTPRequest, HTTPResponse, HTTPTransaction
+
+add_text_base64_support_for_haralyzer()
+
+
+@dataclass
+class EntryHash:
+    pid: int
+    process_name: str
+    image: str
+    url: str
+
+
+@dataclass
+class Filters:
+    pids: Tuple = None
+    process_names: Tuple = None
+    images: Tuple = None
+
+
+class SnifferBase(ABC):
+    def __init__(self, lockdown: LockdownClient, filters: Filters = None, unique: bool = False, request: bool = True,
+                 response: bool = True, color: bool = True, style: str = 'autumn'):
+        self._lockdown = lockdown
+        self._os_trace_service = OsTraceService(self._lockdown)
+        self._filters = filters
+        self._request = request
+        self._response = response
+        self._unique = unique
+        self._color = color
+        self._style = style
+        self._shown_list = []
+
+    def show(self, entry_hash: EntryHash, transaction: str, direction: str, extra: str = '') -> None:
+        if self._unique:
+            if entry_hash in self._shown_list:
+                return
+            else:
+                self._shown_list.append(entry_hash)
+
+        print(f'{direction}   {entry_hash.process_name} ({entry_hash.pid}) {extra}')
+        if self._color:
+            print(highlight(transaction, HttpLexer(), TerminalTrueColorFormatter(style=self._style)))
+        else:
+            print(transaction)
+
+    def should_keep(self, entry_hash: EntryHash) -> bool:
+        if self._filters.pids and entry_hash.pid in self._filters.pids:
+            return False
+
+        if self._filters.images and entry_hash.image in self._filters.images:
+            return False
+
+        if self._filters.process_names and entry_hash.process_name in self._filters.process_names:
+            return False
+        return True
+
+    @abstractmethod
+    def sniff(self) -> None:
+        pass
+
+
+class SnifferPreference(SnifferBase):
+    """
+    Sniff using the secret com.apple.CFNetwork.plist configuration.
+
+    This sniff includes the request/response body as well but requires the device to be jailbroken for
+    the sniff to work
+    """
+
+    def __init__(self, lockdown: LockdownClient, filters: Filters = None, unique: bool = False, request: bool = True,
+                 response: bool = True, color: bool = True, style: str = 'autumn', out: IO = None):
+        super().__init__(lockdown, filters, unique, request, response, color, style)
+        self.out = out
+        self.har = {
+            'log': {
+                'version': '0.1',
+                'creator': {
+                    'name': 'remote-har-listener',
+                    'version': '0.1',
+                },
+                'entries': [],
+            }
+        }
+
+    def sniff(self) -> None:
+        try:
+            self._sniff()
+        except KeyboardInterrupt:
+            if self.out:
+                self.out.write(json.dumps(self.har, indent=4))
+
+    def _sniff(self) -> None:
+        incomplete = ''
+        for line in self._os_trace_service.syslog():
+            if line.label is None:
+                continue
+            if line.label.category != 'HAR':
+                continue
+
+            message = line.message
+
+            try:
+                entry = HarEntry(json.loads(incomplete + message))
+                incomplete = ''
+                entry_hash = EntryHash(line.pid,
+                                       posixpath.basename(line.filename),
+                                       os.path.basename(line.image_name),
+                                       entry.url)
+
+                if not self.should_keep(entry_hash):
+                    continue
+
+                self.har['log']['entries'].append(entry)
+                if self._request:
+                    self.show(entry_hash, entry.request.formatted, '➡️')
+                if self._response:
+                    self.show(entry_hash, entry.response.formatted, '⬅️')
+
+            except json.decoder.JSONDecodeError:
+                if message.startswith('<incomplete>'):
+                    incomplete += message.split('<incomplete>', 1)[1]
+                    continue
+                elif len(incomplete) > 0:
+                    incomplete += message
+                    continue
+
+
+class SnifferProfile(SnifferBase):
+    """
+    Sniff using CFNetworkDiagnostics.mobileconfig profile.
+
+    This requires the specific Apple profile to be installed for the sniff to work.
+    """
+
+    def __init__(self, lockdown: LockdownClient, filters: Filters = None, unique: bool = False, request: bool = True,
+                 response: bool = True, color: bool = True, style: str = 'autumn'):
+        super().__init__(lockdown, filters, unique, request, response, color, style)
+
+    def sniff(self):
+        for entry in self._os_trace_service.syslog():
+            if entry.label is None or entry.label.subsystem != 'com.apple.CFNetwork' or \
+                    entry.label.category != 'Diagnostics':
+                continue
+
+            if 'Protocol Received' not in entry.message and \
+                    'Protocol Enqueue' not in entry.message:
+                continue
+
+            lines = entry.message.split('\n')
+            if len(lines) < 2:
+                continue
+
+            http_transaction = HTTPTransaction.parse_transaction(entry.message)
+            if not http_transaction:
+                raise HTTPParseError()
+            entry_hash = EntryHash(entry.pid,
+                                   posixpath.basename(entry.filename),
+                                   os.path.basename(entry.image_name),
+                                   http_transaction.url)
+
+            if not self.should_keep(entry_hash):
+                continue
+
+            if self._request and isinstance(http_transaction, HTTPRequest):
+                self.show(entry_hash, http_transaction.formatted, '➡️')
+            if self._response and isinstance(http_transaction, HTTPResponse):
+                self.show(entry_hash, http_transaction.formatted, '⬅️', f'({http_transaction.url})')
