@@ -27,11 +27,20 @@ class EntryHash:
     url: str
 
 
-@dataclass
+@dataclass(repr=True)
 class Filters:
     pids: Tuple = None
     process_names: Tuple = None
     images: Tuple = None
+    black_list: bool = True
+
+    def should_keep(self, entry_hash: EntryHash) -> bool:
+        """ Filter out entry if one of the criteria specified (pid,image,process_name) """
+        in_filters = self.pids is not None and entry_hash.pid in self.pids or \
+            self.process_names is not None and entry_hash.process_name in self.process_names or \
+            self.images is not None and entry_hash.image in self.images
+
+        return self.black_list and not in_filters or not self.black_list and in_filters
 
 
 class SnifferBase(ABC):
@@ -59,17 +68,6 @@ class SnifferBase(ABC):
             print(highlight(transaction, HttpLexer(), TerminalTrueColorFormatter(style=self._style)))
         else:
             print(transaction)
-
-    def should_keep(self, entry_hash: EntryHash) -> bool:
-        if self._filters.pids and entry_hash.pid in self._filters.pids:
-            return False
-
-        if self._filters.images and entry_hash.image in self._filters.images:
-            return False
-
-        if self._filters.process_names and entry_hash.process_name in self._filters.process_names:
-            return False
-        return True
 
     @abstractmethod
     def sniff(self) -> None:
@@ -124,7 +122,7 @@ class SnifferPreference(SnifferBase):
                                        os.path.basename(line.image_name),
                                        entry.url)
 
-                if not self.should_keep(entry_hash):
+                if not self._filters.should_keep(entry_hash):
                     continue
 
                 self.har['log']['entries'].append(entry)
@@ -175,7 +173,7 @@ class SnifferProfile(SnifferBase):
                                    os.path.basename(entry.image_name),
                                    http_transaction.url)
 
-            if not self.should_keep(entry_hash):
+            if not self._filters.should_keep(entry_hash):
                 continue
 
             if self._request and isinstance(http_transaction, HTTPRequest):
