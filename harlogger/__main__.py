@@ -1,6 +1,6 @@
 import click
 from pymobiledevice3.cli.cli_common import Command
-from pymobiledevice3.lockdown import LockdownClient
+from pymobiledevice3.lockdown_service_provider import LockdownServiceProvider
 
 from harlogger.sniffers import Filters, SnifferPreference, SnifferProfile
 
@@ -19,14 +19,16 @@ def cli():
 @click.option('--response/--no-response', is_flag=True, default=True, help='show responses')
 @click.option('-u', '--unique', is_flag=True, help='show only unique requests per image/pid/method/uri combination')
 @click.option('--black-list/--white-list', default=True, is_flag=True)
-def cli_profile(lockdown: LockdownClient, pids, process_names, color, request, response, images, unique, black_list):
+def cli_profile(service_provider: LockdownServiceProvider, pids, process_names, color, request, response, images,
+                unique, black_list):
     """
     Sniff using CFNetworkDiagnostics.mobileconfig profile.
 
     This requires the specific Apple profile to be installed for the sniff to work.
     """
     filters = Filters(pids, process_names, images, black_list)
-    SnifferProfile(lockdown, filters=filters, request=request, response=response, color=color, unique=unique).sniff()
+    SnifferProfile(service_provider, filters=filters, request=request, response=response, color=color,
+                   unique=unique).sniff()
 
 
 @cli.command('preference', cls=Command)
@@ -39,7 +41,8 @@ def cli_profile(lockdown: LockdownClient, pids, process_names, color, request, r
 @click.option('--response/--no-response', is_flag=True, default=True, help='show responses')
 @click.option('-u', '--unique', is_flag=True, help='show only unique requests per image/pid/method/uri combination')
 @click.option('--black-list/--white-list', default=True, is_flag=True)
-def cli_preference(lockdown: LockdownClient, out, pids, process_names, images, request, response, color, unique, black_list):
+def cli_preference(service_provider: LockdownServiceProvider, out, pids, process_names, images, request, response,
+                   color, unique, black_list):
     """
     Sniff using the secret com.apple.CFNetwork.plist configuration.
 
@@ -47,7 +50,7 @@ def cli_preference(lockdown: LockdownClient, out, pids, process_names, images, r
     the sniff to work
     """
     filters = Filters(pids, process_names, images, black_list)
-    SnifferPreference(lockdown, filters=filters, request=request, response=response, out=out, color=color,
+    SnifferPreference(service_provider, filters=filters, request=request, response=response, out=out, color=color,
                       unique=unique).sniff()
 
 
