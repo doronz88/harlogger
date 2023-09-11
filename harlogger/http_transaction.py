@@ -17,7 +17,12 @@ class HTTPTransaction:
         parsed_transaction = HTTPTransaction._parse_fields(message=message)
 
         if 'Protocol Enqueue' in parsed_transaction:
-            method, url, http_version = parsed_transaction.pop('Protocol Enqueue').split()[1:]
+            info = parsed_transaction.pop('Protocol Enqueue').split()[1:]
+            if len(info) == 2:
+                method, url = info
+                http_version = 'unknown'
+            else:
+                method, url, http_version = info
             parsed_transaction.pop('Message')
             parsed_transaction.pop('Request')
             res = HTTPRequest(url, method, http_version, parsed_transaction)

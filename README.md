@@ -1,3 +1,13 @@
+- [Description](#description)
+- [Installation](#installation)
+- [Profile method for macOS host](#profile-method-for-macos-host)
+  * [Howto](#howto)
+- [Profile method for non-jailbroken devices](#profile-method-for-non-jailbroken-devices)
+  * [Howto](#howto-1)
+- [Secret preference method for jailbroken devices](#secret-preference-method-for-jailbroken-devices)
+  * [Howto](#howto-2)
+- [Enable HTTP instrumentation method](#enable-http-instrumentation-method)
+
 # Description
 
 Simple pure python utility for sniffing HTTP/HTTPS decrypted traffic recorded by one of Apple's not-so-well documented
@@ -6,8 +16,25 @@ APIs.
 # Installation
 
 ```shell
-python3 -m pip install --user -U harlogger
+python3 -m pip install -U harlogger
 ```
+
+# Profile method for macOS host
+
+This method applies to Apple's CFNetwork profile. This profile is meant for debugging processes using the CFNetwork
+framework. **This method doesn't include the request/response body.**
+
+## Howto
+
+- Download Apple's CFNetwork profile which can be found here:
+  https://developer.apple.com/services-account/download?path=/iOS/iOS_Logs/NetworkDiagnostic.mobileconfig
+
+- Install it using double-click
+
+- That's it! :) You can now just start sniffing out everything using:
+    ```shell
+    python3 -m harlogger profile
+    ```
 
 # Profile method for non-jailbroken devices
 
@@ -23,7 +50,7 @@ framework. **This method doesn't include the request/response body.**
 
     ```shell
     # if you don't already have it
-    python3 -m pip install -U --user pymobiledevice3
+    python3 -m pip install -U pymobiledevice3
     
     # install the profile
     pymobiledevice3 profile install CFNetworkDiagnostics.mobileconfig
@@ -31,7 +58,7 @@ framework. **This method doesn't include the request/response body.**
 
 - That's it! :) You can now just start sniffing out everything using:
     ```shell
-    python3 -m harlogger profile
+    python3 -m harlogger mobile profile
     ```
 
 Output should look like:
@@ -78,7 +105,7 @@ for `com.apple.CFNetwork` and trigger the `com.apple.CFNetwork.har-capture-updat
 Output should look like:
 
 ```
-➜  harlogger git:(master) ✗ python3 -m harlogger preference
+➜  harlogger git:(master) ✗ python3 -m harlogger mobile preference
 ➡️   CFNetwork(1140) POST https://www.bing.com/fd/ls/lsp.aspx
 POST /fd/ls/lsp.aspx HTTP/2.0
 Accept: */*

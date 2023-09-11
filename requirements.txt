@@ -2,3 +2,4 @@ click
 pymobiledevice3>=2.0.2
 pygments
 haralyzer>=2.4.0
+maclog
