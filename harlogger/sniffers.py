@@ -3,9 +3,10 @@ import os
 import posixpath
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import IO, Tuple
+from typing import IO, Optional, Tuple
 
 from haralyzer import HarEntry
+from maclog.log import get_logger
 from pygments import highlight
 from pygments.formatters.terminal256 import TerminalTrueColorFormatter
 from pygments.lexers.textfmts import HttpLexer
@@ -36,18 +37,16 @@ class Filters:
 
     def should_keep(self, entry_hash: EntryHash) -> bool:
         """ Filter out entry if one of the criteria specified (pid,image,process_name) """
-        in_filters = self.pids is not None and entry_hash.pid in self.pids or \
-            self.process_names is not None and entry_hash.process_name in self.process_names or \
-            self.images is not None and entry_hash.image in self.images
+        in_filters = (self.pids is not None and entry_hash.pid in self.pids or
+                      self.process_names is not None and entry_hash.process_name in self.process_names or
+                      self.images is not None and entry_hash.image in self.images)
 
         return self.black_list and not in_filters or not self.black_list and in_filters
 
 
 class SnifferBase(ABC):
-    def __init__(self, lockdown: LockdownClient, filters: Filters = None, unique: bool = False, request: bool = True,
+    def __init__(self, filters: Filters = None, unique: bool = False, request: bool = True,
                  response: bool = True, color: bool = True, style: str = 'autumn'):
-        self._lockdown = lockdown
-        self._os_trace_service = OsTraceService(self._lockdown)
         self._filters = filters
         self._request = request
         self._response = response
@@ -72,6 +71,14 @@ class SnifferBase(ABC):
     @abstractmethod
     def sniff(self) -> None:
         pass
+
+
+class MobileSnifferBase(SnifferBase, ABC):
+    def __init__(self, lockdown: LockdownClient, filters: Filters = None, unique: bool = False, request: bool = True,
+                 response: bool = True, color: bool = True, style: str = 'autumn'):
+        super().__init__(filters, unique, request, response, color, style)
+        self._lockdown = lockdown
+        self._os_trace_service = OsTraceService(self._lockdown)
 
 
 class SnifferPreference(SnifferBase):
@@ -140,7 +147,37 @@ class SnifferPreference(SnifferBase):
                     continue
 
 
-class SnifferProfile(SnifferBase):
+class SnifferProfileBase(SnifferBase, ABC):
+    def _handle_entry(self, pid: int, message: str, filename: str, image_name: str, subsystem: Optional[str] = None,
+                      category: Optional[str] = None):
+        if subsystem != 'com.apple.CFNetwork' or category != 'Diagnostics':
+            return
+
+        if 'Protocol Received' not in message and 'Protocol Enqueue' not in message:
+            return
+
+        lines = message.split('\n')
+        if len(lines) < 2:
+            return
+
+        http_transaction = HTTPTransaction.parse_transaction(message)
+        if not http_transaction:
+            raise HTTPParseError()
+        entry_hash = EntryHash(pid,
+                               posixpath.basename(filename),
+                               os.path.basename(image_name),
+                               http_transaction.url)
+
+        if not self._filters.should_keep(entry_hash):
+            return
+
+        if self._request and isinstance(http_transaction, HTTPRequest):
+            self.show(entry_hash, http_transaction.formatted, '➡️')
+        if self._response and isinstance(http_transaction, HTTPResponse):
+            self.show(entry_hash, http_transaction.formatted, '⬅️', f'({http_transaction.url})')
+
+
+class MobileSnifferProfile(MobileSnifferBase, SnifferProfileBase):
     """
     Sniff using CFNetworkDiagnostics.mobileconfig profile.
 
@@ -151,32 +188,29 @@ class SnifferProfile(SnifferBase):
                  response: bool = True, color: bool = True, style: str = 'autumn'):
         super().__init__(lockdown, filters, unique, request, response, color, style)
 
-    def sniff(self):
+    def sniff(self) -> None:
         for entry in self._os_trace_service.syslog():
-            if entry.label is None or entry.label.subsystem != 'com.apple.CFNetwork' or \
-                    entry.label.category != 'Diagnostics':
-                continue
+            subsystem = None
+            category = None
+            if entry.label is not None:
+                subsystem = entry.label.subsystem
+                category = entry.label.category
+            self._handle_entry(entry.pid, entry.message, entry.filename, entry.image_name, subsystem=subsystem,
+                               category=category)
 
-            if 'Protocol Received' not in entry.message and \
-                    'Protocol Enqueue' not in entry.message:
-                continue
 
-            lines = entry.message.split('\n')
-            if len(lines) < 2:
-                continue
+class HostSnifferProfile(SnifferProfileBase):
+    """
+    Sniff using CFNetworkDiagnostics.mobileconfig profile.
 
-            http_transaction = HTTPTransaction.parse_transaction(entry.message)
-            if not http_transaction:
-                raise HTTPParseError()
-            entry_hash = EntryHash(entry.pid,
-                                   posixpath.basename(entry.filename),
-                                   os.path.basename(entry.image_name),
-                                   http_transaction.url)
+    This requires the specific Apple profile to be installed for the sniff to work.
+    """
 
-            if not self._filters.should_keep(entry_hash):
-                continue
+    def __init__(self, filters: Filters = None, unique: bool = False, request: bool = True,
+                 response: bool = True, color: bool = True, style: str = 'autumn'):
+        super().__init__(filters, unique, request, response, color, style)
 
-            if self._request and isinstance(http_transaction, HTTPRequest):
-                self.show(entry_hash, http_transaction.formatted, '➡️')
-            if self._response and isinstance(http_transaction, HTTPResponse):
-                self.show(entry_hash, http_transaction.formatted, '⬅️', f'({http_transaction.url})')
+    def sniff(self) -> None:
+        for entry in get_logger():
+            self._handle_entry(entry.process_id, entry.event_message, entry.process_image_path, entry.sender_image_path,
+                               subsystem=entry.subsystem, category=entry.category)

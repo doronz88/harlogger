@@ -5,7 +5,7 @@ description = "Simple utlity for sniffing decrypted HTTP/HTTPS traffic on an iOS
 readme = "README.md"
 requires-python = ">=3.8"
 license = { file = "LICENSE" }
-keywords = ["ios", "http", "https", "har", "sniffer", "jailbroken"]
+keywords = ["ios", "osx", "mac", "macos", "http", "https", "har", "sniffer", "jailbroken"]
 authors = [
     { name = "doronz88", email = "doron88@gmail.com" },
     { name = "netanelc305", email = "netanelc305@protonmail.com" }
