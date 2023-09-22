@@ -81,7 +81,7 @@ class MobileSnifferBase(SnifferBase, ABC):
         self._os_trace_service = OsTraceService(self._lockdown)
 
 
-class SnifferPreference(SnifferBase):
+class SnifferPreference(MobileSnifferBase):
     """
     Sniff using the secret com.apple.CFNetwork.plist configuration.
 
