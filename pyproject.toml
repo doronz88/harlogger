@@ -35,7 +35,7 @@ test = ["pytest"]
 "Bug Reports" = "https://github.com/doronz88/harlogger/issues"
 
 [project.scripts]
-rpcclient = "harlogger.__main__:cli"
+harlogger = "harlogger.__main__:cli"
 
 [tool.setuptools.packages.find]
 exclude = ["docs*", "tests*"]
