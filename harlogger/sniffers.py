@@ -122,7 +122,8 @@ class SnifferPreference(MobileSnifferBase):
             message = line.message
 
             try:
-                entry = HarEntry(json.loads(incomplete + message))
+                full_message = json.loads(incomplete + message)
+                entry = HarEntry(full_message)
                 incomplete = ''
                 entry_hash = EntryHash(line.pid,
                                        posixpath.basename(line.filename),
@@ -132,7 +133,7 @@ class SnifferPreference(MobileSnifferBase):
                 if not self._filters.should_keep(entry_hash):
                     continue
 
-                self.har['log']['entries'].append(entry)
+                self.har['log']['entries'].append(full_message)
                 if self._request:
                     self.show(entry_hash, entry.request.formatted, '➡️')
                 if self._response:
