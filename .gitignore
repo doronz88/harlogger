@@ -10,6 +10,7 @@ debug/
 *.DS_Store
 tickets
 .idea
+harlogger/_version.py
 
 
 

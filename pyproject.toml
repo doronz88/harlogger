@@ -1,6 +1,5 @@
 [project]
 name = "harlogger"
-version = "4.0.2"
 description = "Simple utlity for sniffing decrypted HTTP/HTTPS traffic on an iOS device (either jailbroken or not)"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -25,7 +24,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3 :: Only",
 ]
-dynamic = ["dependencies"]
+dynamic = ["dependencies", "version"]
 
 [project.optional-dependencies]
 test = ["pytest"]
@@ -42,7 +41,11 @@ exclude = ["docs*", "tests*"]
 
 [tool.setuptools.dynamic]
 dependencies = { file = ["requirements.txt"] }
+version = {attr = "harlogger._version.__version__"}
+
+[tool.setuptools_scm]
+version_file = "harlogger/_version.py"
 
 [build-system]
-requires = ["setuptools>=43.0.0", "wheel"]
+requires = ["setuptools>=43.0.0", "setuptools_scm>=8", "wheel"]
 build-backend = "setuptools.build_meta"
