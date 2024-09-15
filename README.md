@@ -26,8 +26,9 @@ framework. **This method doesn't include the request/response body.**
 
 ## Howto
 
-- Download Apple's CFNetwork profile which can be found here:
-  https://developer.apple.com/services-account/download?path=/iOS/iOS_Logs/NetworkDiagnostic.mobileconfig
+- Download
+  Apple's [CFNetwork profile for macOS](https://developer.apple.com/services-account/download?path=/iOS/iOS_Logs/NetworkDiagnostic.mobileconfig):
+
 
 - Install it using double-click
 
@@ -43,8 +44,8 @@ framework. **This method doesn't include the request/response body.**
 
 ## Howto
 
-- Download Apple's CFNetwork profile which can be found here:
-  https://developer.apple.com/services-account/download?path=/iOS/iOS_Logs/CFNetworkDiagnostics.mobileconfig
+- Download
+  Apple's [CFNetwork profile for iOS](https://developer.apple.com/services-account/download?path=/iOS/iOS_Logs/CFNetworkDiagnostics.mobileconfig):
 
 - Install it via any way you prefer. I'm using [`pymobiledevice3`](https://github.com/doronz88/pymobiledevice3):
 
