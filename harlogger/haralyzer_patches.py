@@ -16,4 +16,4 @@ class ResponseHook(Response):
 
 
 def add_text_base64_support_for_haralyzer() -> None:
-    setattr(Response, 'text', ResponseHook.text)
+    Response.text = ResponseHook.text
