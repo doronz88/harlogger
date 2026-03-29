@@ -1,7 +1,6 @@
 typer
-pymobiledevice3>=2.0.2
+pymobiledevice3~=9.7
 pygments
 haralyzer>=2.4.0
 maclog
-
 typer-injector
