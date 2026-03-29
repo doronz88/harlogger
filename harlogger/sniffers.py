@@ -38,13 +38,17 @@ class Filters:
 
     def should_keep(self, entry_hash: EntryHash) -> bool:
         """Filter out entry if one of the criteria specified (pid,image,process_name)"""
+        has_filters = self.pids or self.process_names or self.images
+        
         in_filters = (
             (self.pids is not None and entry_hash.pid in self.pids)
             or (self.process_names is not None and entry_hash.process_name in self.process_names)
             or (self.images is not None and entry_hash.image in self.images)
         )
 
-        return (self.black_list and not in_filters) or (not self.black_list and in_filters)
+        if has_filters:
+            return in_filters
+        return self.black_list
 
 
 class SnifferBase(ABC):
