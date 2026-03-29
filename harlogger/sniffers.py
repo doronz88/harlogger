@@ -39,7 +39,7 @@ class Filters:
     def should_keep(self, entry_hash: EntryHash) -> bool:
         """Filter out entry if one of the criteria specified (pid,image,process_name)"""
         has_filters = self.pids or self.process_names or self.images
-        
+
         in_filters = (
             (self.pids is not None and entry_hash.pid in self.pids)
             or (self.process_names is not None and entry_hash.process_name in self.process_names)
@@ -135,16 +135,16 @@ class SnifferPreference(MobileSnifferBase):
             }
         }
 
-    def sniff(self) -> None:
+    async def sniff(self) -> None:
         try:
             self._sniff()
         except KeyboardInterrupt:
             if self.out:
                 self.out.write(json.dumps(self.har, indent=4))
 
-    def _sniff(self) -> None:
+    async def _sniff(self) -> None:
         incomplete = ""
-        for line in self._os_trace_service.syslog():
+        async for line in self._os_trace_service.syslog():
             if line.label is None:
                 continue
             if line.label.category != "HAR":
@@ -231,8 +231,8 @@ class MobileSnifferProfile(MobileSnifferBase, SnifferProfileBase):
     ):
         super().__init__(lockdown, filters, unique, request, response, color, style)
 
-    def sniff(self) -> None:
-        for entry in self._os_trace_service.syslog():
+    async def sniff(self) -> None:
+        async for entry in self._os_trace_service.syslog():
             subsystem = None
             category = None
             if entry.label is not None:

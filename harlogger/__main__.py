@@ -1,7 +1,7 @@
 from typing import Annotated, Optional
 
 import typer
-from pymobiledevice3.cli.cli_common import ServiceProviderDep
+from pymobiledevice3.cli.cli_common import ServiceProviderDep, async_command
 from typer_injector import InjectingTyper
 
 from harlogger.sniffers import Filters, HostSnifferProfile, MobileSnifferProfile, SnifferPreference
@@ -15,7 +15,8 @@ cli.add_typer(mobile, name="mobile")
 
 
 @mobile.command("profile")
-def mobile_profile(
+@async_command
+async def mobile_profile(
     service_provider: ServiceProviderDep,
     pids: Annotated[Optional[list[int]], typer.Option("-p", "--pid", help="filter pid list")] = None,
     process_names: Annotated[
@@ -38,13 +39,14 @@ def mobile_profile(
     This requires the specific Apple profile to be installed for the sniff to work.
     """
     filters = Filters(pids, process_names, images, black_list)
-    MobileSnifferProfile(
+    await MobileSnifferProfile(
         service_provider, filters=filters, request=request, response=response, color=color, unique=unique
     ).sniff()
 
 
 @mobile.command("preference")
-def mobile_preference(
+@async_command
+async def mobile_preference(
     service_provider: ServiceProviderDep,
     out: Annotated[
         Optional[typer.FileTextWrite],
@@ -72,7 +74,7 @@ def mobile_preference(
     the sniff to work
     """
     filters = Filters(pids, process_names, images, black_list)
-    SnifferPreference(
+    await SnifferPreference(
         service_provider, filters=filters, request=request, response=response, out=out, color=color, unique=unique
     ).sniff()
 
