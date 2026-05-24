@@ -137,7 +137,7 @@ class SnifferPreference(MobileSnifferBase):
 
     async def sniff(self) -> None:
         try:
-            self._sniff()
+            await self._sniff()
         except KeyboardInterrupt:
             if self.out:
                 self.out.write(json.dumps(self.har, indent=4))
