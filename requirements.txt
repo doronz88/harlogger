@@ -1,5 +1,5 @@
 typer
-pymobiledevice3~=9.7
+pymobiledevice3>=9.7
 pygments
 haralyzer>=2.4.0
 maclog
